@@ -1,7 +1,8 @@
 module.exports = {
+  printWidth: 96,
   "overrides": [
     {
-      "files": "*.sol",
+      "files": ["*.sol"],
       "options": {
         "printWidth": 96,
         "tabWidth": 4,
