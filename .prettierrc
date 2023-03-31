@@ -1,5 +1,5 @@
-module.exports = {
-  printWidth: 96,
+{
+  "printWidth": 96,
   "overrides": [
     {
       "files": ["*.sol"],
