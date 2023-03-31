@@ -17,12 +17,14 @@ function sum(uint256 a, uint256 b) public pure returns (uint256) {
 }
 ```
 ## Result
-- Mesure 3 times
+- Mesure 5 times
   - The initial gas cost is higher due to the initialization of the storage slot for nonces.
 - Display the amount of gas used and the reduction in gas consumption.
 
 | Times  | Robust Contract | Simple Contract | Optimized Contract | Robust/Optimized | Simple/Optimized |
 | -- | -- | -- | -- | -- | -- |
-|1|- gas|54746 gas|54428 gas| %| 0.5808643553866949 %|
-|2|- gas|37634 gas|37316 gas| %| 0.5808643553866949 %|
-|3|- gas|37646 gas|37328 gas| %| 0.5808643553866949 %|
+|1|57800 gas|54746 gas|54428 gas|5.834%|0.581%|
+|2|40700 gas|37634 gas|37316 gas|8.314%|0.845%|
+|3|40712 gas|37646 gas|37328 gas|8.312%|0.845%|
+|4|40712 gas|37646 gas|37328 gas|8.312%|0.845%|
+|5|40712 gas|37646 gas|37328 gas|8.312%|0.845%|

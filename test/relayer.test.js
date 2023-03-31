@@ -1,3 +1,5 @@
+const ethSigUtil = require("eth-sig-util");
+
 const RobustRelayer = artifacts.require("RobustRelayer");
 const SimpleRelayer = artifacts.require("SimpleRelayer");
 const OptimizedRelayer = artifacts.require("OptimizedRelayer");
@@ -48,15 +50,38 @@ contract("SimpleRelayer", function ([operator, relayee]) {
           nonce: Number(await rRelayer.getNonce(relayee)),
           data: abiEncodedCall,
         };
-        const rhash = await rRelayer.hashOfRequest(req);
-        const rsig = await web3.eth.accounts.sign(rhash, relayeeWallet.privateKey);
-        sReceipts.push(
-          await rRelayer.execute(req, rsig.signature, {
+        const data = {
+          types: {
+            EIP712Domain: [
+              { name: "name", type: "string" },
+              { name: "version", type: "string" },
+              { name: "chainId", type: "uint256" },
+              { name: "verifyingContract", type: "address" },
+            ],
+            ForwardRequest: [
+              { name: "from", type: "address" },
+              { name: "to", type: "address" },
+              { name: "value", type: "uint256" },
+              { name: "gas", type: "uint256" },
+              { name: "nonce", type: "uint256" },
+              { name: "data", type: "bytes" },
+            ],
+          },
+          domain: {
+            name: "MinimalForwarder",
+            version: "0.0.1",
+            chainId: await web3.eth.getChainId(),
+            verifyingContract: rRelayer.address,
+          },
+          primaryType: "ForwardRequest",
+          message: req,
+        };
+        const signature = ethSigUtil.signTypedMessage(Buffer.from(PRI_KEY, "hex"), { data });
+        rReceipts.push(
+          await rRelayer.execute(req, signature, {
             from: operator,
           })
         );
-
-        console.log("fjkfjdklfjsalfjdlfjdlsfjdsl");
 
         // simple relayer
         const shash = await sRelayer.hashOfRequest(relayee, calculator.address, abiEncodedCall);
@@ -100,13 +125,17 @@ contract("SimpleRelayer", function ([operator, relayee]) {
       // print gas cost
       for (let i = 0; i < rReceipts.length; i++) {
         const rRate =
-          ((rReceipts[i].receipt.gasUsed - oReceipts[i].receipt.gasUsed) /
-            rReceipts[i].receipt.gasUsed) *
-          100;
+          Math.round(
+            ((rReceipts[i].receipt.gasUsed - oReceipts[i].receipt.gasUsed) /
+              rReceipts[i].receipt.gasUsed) *
+              100000
+          ) / 1000;
         const sRate =
-          ((sReceipts[i].receipt.gasUsed - oReceipts[i].receipt.gasUsed) /
-            sReceipts[i].receipt.gasUsed) *
-          100;
+          Math.round(
+            ((sReceipts[i].receipt.gasUsed - oReceipts[i].receipt.gasUsed) /
+              sReceipts[i].receipt.gasUsed) *
+              100000
+          ) / 1000;
         console.log(
           `[${i + 1} times] robust: ${rReceipts[i].receipt.gasUsed}, simple: ${
             sReceipts[i].receipt.gasUsed
