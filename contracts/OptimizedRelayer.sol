@@ -6,33 +6,6 @@ import "./interfaces/IOptimizedRelayer.sol";
 contract OptimizedRelayer is IOptimizedRelayer {
     mapping(address => uint256) private _nonces;
 
-    function hashOfRequest(
-        address sender,
-        address to,
-        bytes memory data
-    ) public view returns (bytes32 result) {
-        uint256 nonce = _nonces[sender];
-        bytes32 dataHash;
-
-        assembly {
-            // Compute hash of data
-            let size := mload(data)
-            dataHash := keccak256(add(data, 0x20), size)
-
-            // Get free memory pointer
-            let ptr := mload(0x40)
-
-            // Store the function arguments sequentially in memory
-            mstore(ptr, sender)
-            mstore(add(ptr, 0x20), to)
-            mstore(add(ptr, 0x40), nonce)
-            mstore(add(ptr, 0x60), dataHash)
-
-            // Compute the final hash
-            result := keccak256(ptr, 0x80)
-        }
-    }
-
     function execute(
         address sender,
         address to,
@@ -67,28 +40,53 @@ contract OptimizedRelayer is IOptimizedRelayer {
     function verify(
         address sender,
         address to,
-        bytes calldata data,
+        bytes memory data,
         uint8 v,
         bytes32 r,
         bytes32 s
     ) public view returns (bool) {
-        bytes32 hash = hashOfRequest(sender, to, data);
+        uint256 nonce = _nonces[sender];
+        bytes32 hash;
 
-        bytes32 ethSignedMessageHash;
         assembly {
-            let ptr := mload(0x40) // Get free memory pointer
+            // NOTE: inlined hashOfRequest to save gas
+            // ********** start **********
+
+            // Compute hash of data
+            let size := mload(data)
+            hash := keccak256(add(data, 0x20), size)
+
+            // Get free memory pointer
+            let ptr := mload(0x40)
+
+            // Store the function arguments sequentially in memory
+            mstore(ptr, sender)
+            mstore(add(ptr, 0x20), to)
+            mstore(add(ptr, 0x40), nonce)
+            mstore(add(ptr, 0x60), hash)
+
+            // Compute the final hash
+            hash := keccak256(ptr, 0x80)
+
+            // ********** end **********
 
             // Store the Ethereum Signed Message prefix and the hash
             mstore(ptr, "\x19Ethereum Signed Message:\n32\x00\x00\x00\x00")
             mstore(add(ptr, 0x1c), hash)
 
             // Compute the ethSignedMessageHash
-            ethSignedMessageHash := keccak256(ptr, 0x3c)
+            hash := keccak256(ptr, 0x3c)
         }
 
-        address signer = ecrecover(ethSignedMessageHash, v, r, s);
+        return sender == ecrecover(hash, v, r, s);
+    }
 
-        return signer == sender;
+    function hashOfRequest(
+        address sender,
+        address to,
+        bytes memory data
+    ) public view returns (bytes32) {
+        return keccak256(abi.encode(sender, to, _nonces[sender], keccak256(data)));
     }
 
     function nonces(address sender) public view returns (uint256) {

@@ -18,7 +18,7 @@ contract("SimpleRelayer", function ([operator, relayee]) {
   });
 
   describe("execute", () => {
-    it("mesure gas cost 3 times", async function () {
+    it("mesure gas cost 5 times", async function () {
       const abiEncodedCall = web3.eth.abi.encodeFunctionCall(
         {
           name: "greet",
@@ -28,10 +28,10 @@ contract("SimpleRelayer", function ([operator, relayee]) {
         []
       );
 
-      // execute 3 times
+      // execute 5 times
       const sReceipts = [];
       const oReceipts = [];
-      for (let i = 0; i < 3; i++) {
+      for (let i = 0; i < 5; i++) {
         // simple relayer
         const shash = await sRelayer.hashOfRequest(relayee, hello.address, abiEncodedCall);
         const ssig = await web3.eth.accounts.sign(shash, relayeeWallet.privateKey);
@@ -56,7 +56,7 @@ contract("SimpleRelayer", function ([operator, relayee]) {
       }
 
       // print gas cost
-      for (let i = 0; i < 3; i++) {
+      for (let i = 0; i < sReceipts.length; i++) {
         const rate = ((sReceipts[i].receipt.gasUsed - oReceipts[i].receipt.gasUsed) / sReceipts[i].receipt.gasUsed) * 100;
         console.log(`[${i + 1} times] simple: ${sReceipts[i].receipt.gasUsed}, optimized: ${oReceipts[i].receipt.gasUsed}, reducedRate: ${rate}%`);
       }
