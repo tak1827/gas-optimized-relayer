@@ -9,7 +9,7 @@ contract OptimizedRelayer is IOptimizedRelayer {
     function execute(
         address sender,
         address to,
-        bytes calldata data,
+        bytes memory data,
         uint8 v,
         bytes32 r,
         bytes32 s
@@ -20,20 +20,27 @@ contract OptimizedRelayer is IOptimizedRelayer {
             _nonces[sender] += 1;
         }
 
-        // Append the address of the original function executer to the end of calldata
-        bytes memory cdata = abi.encodePacked(data, sender);
+        bytes4 errorSelector = CallReverted.selector;
+        assembly {
+            // Append the address of the original function executer to the end of calldata
+            // same as: bytes memory cdata = abi.encodePacked(data, sender);
+            let size := mload(data)
+            mstore(add(add(data, 0x20), size), shl(96, sender))
+            mstore(data, add(size, 0x14))
 
-        (bool success, bytes memory returndata) = to.call(cdata);
-
-        // revert on failure
-        if (!success) {
-            if (returndata.length > 0) {
-                assembly {
-                    let returndata_size := mload(returndata)
-                    revert(add(32, returndata), returndata_size)
+            // Call relayee function
+            // same as: (bool success, bytes memory returndata) = to.call(cdata);
+            if iszero(call(gas(), to, 0, add(data, 0x20), add(size, 0x14), 0, 0)) {
+                switch returndatasize()
+                case 0 {
+                    mstore(0x00, errorSelector)
+                    revert(0x00, 0x04)
+                }
+                default {
+                    returndatacopy(0x00, 0x00, returndatasize())
+                    revert(0x00, returndatasize())
                 }
             }
-            _revert(CallReverted.selector);
         }
     }
 
@@ -45,12 +52,17 @@ contract OptimizedRelayer is IOptimizedRelayer {
         bytes32 r,
         bytes32 s
     ) public view returns (bool) {
-        uint256 nonce = _nonces[sender];
+        uint256 nonce;
         bytes32 hash;
 
         assembly {
             // NOTE: inlined hashOfRequest to save gas
             // ********** start **********
+
+            // Get nonce
+            mstore(0x20, _nonces.slot)
+            mstore(0x00, sender)
+            nonce := sload(keccak256(0x00, 0x40))
 
             // Compute hash of data
             let size := mload(data)

@@ -23,8 +23,8 @@ function sum(uint256 a, uint256 b) public pure returns (uint256) {
 
 | Times  | Robust Contract | Simple Contract | Optimized Contract | Robust/Optimized | Simple/Optimized |
 | -- | -- | -- | -- | -- | -- |
-|1|57800 gas|54746 gas|54428 gas|5.834 %|0.581 %|
-|2|40700 gas|37634 gas|37316 gas|8.314 %|0.845 %|
-|3|40712 gas|37646 gas|37328 gas|8.312 %|0.845 %|
-|4|40712 gas|37646 gas|37328 gas|8.312 %|0.845 %|
-|5|40712 gas|37646 gas|37328 gas|8.312 %|0.845 %|
+|1|57800 gas|54746 gas|53794 gas|6.931 %|1.739 %|
+|2|40700 gas|37634 gas|36694 gas|9.869 %|2.529 %|
+|3|40712 gas|37646 gas|36694 gas|9.869 %|2.529 %|
+|4|40712 gas|37646 gas|36682 gas|9.899 %|2.530 %|
+|5|40712 gas|37646 gas|36694 gas|9.869 %|2.529 %|
