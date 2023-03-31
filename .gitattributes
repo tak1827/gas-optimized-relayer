@@ -1,6 +1,3 @@
 test/* linguist-vendored
 migrations/* linguist-vendored
-.eslintrc.js linguist-vendored
-.prettierrc.js linguist-vendored
-truffle-config.js linguist-vendored
-*.json linguist-language=Solidity
+*.js linguist-language=Solidity
