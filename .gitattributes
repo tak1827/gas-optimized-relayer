@@ -1,1 +1,2 @@
-contracts/* linguist-vendored
+test/* linguist-vendored
+migrations/* linguist-vendored
