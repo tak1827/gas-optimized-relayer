@@ -1,2 +1,3 @@
 test/* linguist-vendored
 migrations/* linguist-vendored
+*.json linguist-language=Solidity
