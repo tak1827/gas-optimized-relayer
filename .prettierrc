@@ -1,5 +1,5 @@
 {
-  "printWidth": 96,
+  "printWidth": 128,
   "overrides": [
     {
       "files": ["*.sol"],

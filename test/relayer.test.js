@@ -77,44 +77,20 @@ contract("SimpleRelayer", function ([operator, relayee]) {
           message: req,
         };
         const signature = ethSigUtil.signTypedMessage(Buffer.from(PRI_KEY, "hex"), { data });
-        rReceipts.push(
-          await rRelayer.execute(req, signature, {
-            from: operator,
-          })
-        );
+        rReceipts.push(await rRelayer.execute(req, signature, { from: operator }));
 
         // simple relayer
         const shash = await sRelayer.hashOfRequest(relayee, calculator.address, abiEncodedCall);
         const ssig = await web3.eth.accounts.sign(shash, relayeeWallet.privateKey);
         sReceipts.push(
-          await sRelayer.execute(
-            relayee,
-            calculator.address,
-            abiEncodedCall,
-            ssig.v,
-            ssig.r,
-            ssig.s,
-            {
-              from: operator,
-            }
-          )
+          await sRelayer.execute(relayee, calculator.address, abiEncodedCall, ssig.v, ssig.r, ssig.s, { from: operator })
         );
 
         // optimized relayer
         const ohash = await oRelayer.hashOfRequest(relayee, calculator.address, abiEncodedCall);
         const osig = await web3.eth.accounts.sign(ohash, relayeeWallet.privateKey);
         oReceipts.push(
-          await oRelayer.execute(
-            relayee,
-            calculator.address,
-            abiEncodedCall,
-            osig.v,
-            osig.r,
-            osig.s,
-            {
-              from: operator,
-            }
-          )
+          await oRelayer.execute(relayee, calculator.address, abiEncodedCall, osig.v, osig.r, osig.s, { from: operator })
         );
 
         // assert that hash and signature between simple and optimized are equal
@@ -125,21 +101,13 @@ contract("SimpleRelayer", function ([operator, relayee]) {
       // print gas cost
       for (let i = 0; i < rReceipts.length; i++) {
         const rRate =
-          Math.round(
-            ((rReceipts[i].receipt.gasUsed - oReceipts[i].receipt.gasUsed) /
-              rReceipts[i].receipt.gasUsed) *
-              100000
-          ) / 1000;
+          Math.round(((rReceipts[i].receipt.gasUsed - oReceipts[i].receipt.gasUsed) / rReceipts[i].receipt.gasUsed) * 100000) /
+          1000;
         const sRate =
-          Math.round(
-            ((sReceipts[i].receipt.gasUsed - oReceipts[i].receipt.gasUsed) /
-              sReceipts[i].receipt.gasUsed) *
-              100000
-          ) / 1000;
+          Math.round(((sReceipts[i].receipt.gasUsed - oReceipts[i].receipt.gasUsed) / sReceipts[i].receipt.gasUsed) * 100000) /
+          1000;
         console.log(
-          `[${i + 1} times] robust: ${rReceipts[i].receipt.gasUsed}, simple: ${
-            sReceipts[i].receipt.gasUsed
-          }, optimized: ${
+          `[${i + 1} times] robust: ${rReceipts[i].receipt.gasUsed}, simple: ${sReceipts[i].receipt.gasUsed}, optimized: ${
             oReceipts[i].receipt.gasUsed
           }, robust/optimized: ${rRate}%, simple/optimized: ${sRate}%`
         );
