@@ -41,21 +41,27 @@ contract OptimizedRelayer is IOptimizedRelayer {
         bytes32 r,
         bytes32 s
     ) public {
-        // 署名の検証
         if (!verify(sender, to, data, v, r, s)) _revert(NotMatchWithRecoverdSigner.selector);
 
         unchecked {
             _nonces[sender] += 1;
         }
 
-        // calldataの末尾にオリジナルの関数実行者のアドレスを付与
+        // Append the address of the original function executer to the end of calldata
         bytes memory cdata = abi.encodePacked(data, sender);
 
-        // 外部関数のコール
-        (bool success, ) = to.call(cdata);
+        (bool success, bytes memory returndata) = to.call(cdata);
 
-        // 失敗した場合はrevert
-        if (!success) _revert(CallReverted.selector);
+        // revert on failure
+        if (!success) {
+            if (returndata.length > 0) {
+                assembly {
+                    let returndata_size := mload(returndata)
+                    revert(add(32, returndata), returndata_size)
+                }
+            }
+            _revert(CallReverted.selector);
+        }
     }
 
     function verify(
