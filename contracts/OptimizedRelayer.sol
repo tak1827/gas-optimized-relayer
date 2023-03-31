@@ -20,7 +20,6 @@ contract OptimizedRelayer is IOptimizedRelayer {
             _nonces[sender] += 1;
         }
 
-        bytes4 errorSelector = CallReverted.selector;
         assembly {
             // Append the address of the original function executer to the end of calldata
             // same as: bytes memory cdata = abi.encodePacked(data, sender);
@@ -33,7 +32,7 @@ contract OptimizedRelayer is IOptimizedRelayer {
             if iszero(call(gas(), to, 0, add(data, 0x20), add(size, 0x14), 0, 0)) {
                 switch returndatasize()
                 case 0 {
-                    mstore(0x00, errorSelector)
+                    mstore(0x00, 0xbbdf0a77) // -> CallReverted.selector
                     revert(0x00, 0x04)
                 }
                 default {
