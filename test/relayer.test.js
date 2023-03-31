@@ -1,3 +1,4 @@
+const RobustRelayer = artifacts.require("RobustRelayer");
 const SimpleRelayer = artifacts.require("SimpleRelayer");
 const OptimizedRelayer = artifacts.require("OptimizedRelayer");
 const Calculator = artifacts.require("Calculator");
@@ -7,11 +8,13 @@ const PRI_KEY = "8179ce3d00ac1d1d1d38e4f038de00ccd0e0375517164ac5448e3acc847acb3
 
 contract("SimpleRelayer", function ([operator, relayee]) {
   const relayeeWallet = web3.eth.accounts.privateKeyToAccount(PRI_KEY);
+  let rRelayer;
   let sRelayer;
   let oRelayer;
   let calculator;
 
   beforeEach(async function () {
+    rRelayer = await RobustRelayer.new();
     sRelayer = await SimpleRelayer.new();
     oRelayer = await OptimizedRelayer.new();
     calculator = await Calculator.new();
@@ -32,9 +35,29 @@ contract("SimpleRelayer", function ([operator, relayee]) {
       );
 
       // execute 5 times
+      const rReceipts = [];
       const sReceipts = [];
       const oReceipts = [];
       for (let i = 0; i < 5; i++) {
+        // robust relayer
+        const req = {
+          from: relayee,
+          to: calculator.address,
+          value: "0",
+          gas: "5000",
+          nonce: Number(await rRelayer.getNonce(relayee)),
+          data: abiEncodedCall,
+        };
+        const rhash = await rRelayer.hashOfRequest(req);
+        const rsig = await web3.eth.accounts.sign(rhash, relayeeWallet.privateKey);
+        sReceipts.push(
+          await rRelayer.execute(req, rsig.signature, {
+            from: operator,
+          })
+        );
+
+        console.log("fjkfjdklfjsalfjdlfjdlsfjdsl");
+
         // simple relayer
         const shash = await sRelayer.hashOfRequest(relayee, calculator.address, abiEncodedCall);
         const ssig = await web3.eth.accounts.sign(shash, relayeeWallet.privateKey);
@@ -69,21 +92,27 @@ contract("SimpleRelayer", function ([operator, relayee]) {
           )
         );
 
-        // assert that hash and signature are equal
+        // assert that hash and signature between simple and optimized are equal
         assert.equal(shash, ohash, "hashes are not equal");
         assert.equal(ssig.signature, osig.signature, "signature are not equal");
       }
 
       // print gas cost
-      for (let i = 0; i < sReceipts.length; i++) {
-        const rate =
+      for (let i = 0; i < rReceipts.length; i++) {
+        const rRate =
+          ((rReceipts[i].receipt.gasUsed - oReceipts[i].receipt.gasUsed) /
+            rReceipts[i].receipt.gasUsed) *
+          100;
+        const sRate =
           ((sReceipts[i].receipt.gasUsed - oReceipts[i].receipt.gasUsed) /
             sReceipts[i].receipt.gasUsed) *
           100;
         console.log(
-          `[${i + 1} times] simple: ${sReceipts[i].receipt.gasUsed}, optimized: ${
+          `[${i + 1} times] robust: ${rReceipts[i].receipt.gasUsed}, simple: ${
+            sReceipts[i].receipt.gasUsed
+          }, optimized: ${
             oReceipts[i].receipt.gasUsed
-          }, reducedRate: ${rate}%`
+          }, robust/optimized: ${rRate}%, simple/optimized: ${sRate}%`
         );
       }
     });

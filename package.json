@@ -21,6 +21,9 @@
     "url": "https://github.com/tak1827/gas-optimized-relayer/issues"
   },
   "homepage": "https://github.com/tak1827/gas-optimized-relayer#readme",
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.8.2"
+  },
   "devDependencies": {
     "eslint-config-prettier": "^8.8.0",
     "eslint-plugin-prettier": "^4.2.1",

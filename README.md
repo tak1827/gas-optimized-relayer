@@ -7,7 +7,7 @@ A experlimental gas-optimized solidity relayer contract.
 #### Contract Types
 1. Secure contract utilizing a robust library such as OpenZeppelin.
 2. Simplified contract omitting heavy code.
-3. Optimized contract employing inline assembly.
+3. Optimized contract, which is an improved version of the Simplified contract, utilizing inline assembly
 
 #### Relayed function
 Sum of two arguments:
@@ -21,7 +21,7 @@ function sum(uint256 a, uint256 b) public pure returns (uint256) {
   - The initial gas cost is higher due to the initialization of the storage slot for nonces.
 - Display the amount of gas used and the reduction in gas consumption.
 
-| Times  | Secure Contract | Simple Contract | Optimized Contract | Secure/Optimized | Simple/Optimized |
+| Times  | Robust Contract | Simple Contract | Optimized Contract | Robust/Optimized | Simple/Optimized |
 | -- | -- | -- | -- | -- | -- |
 |1|- gas|54746 gas|54428 gas| %| 0.5808643553866949 %|
 |2|- gas|37634 gas|37316 gas| %| 0.5808643553866949 %|
