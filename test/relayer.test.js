@@ -78,6 +78,7 @@ contract("SimpleRelayer", function ([operator, relayee]) {
         };
         const signature = ethSigUtil.signTypedMessage(Buffer.from(PRI_KEY, "hex"), { data });
         rReceipts.push(await rRelayer.execute(req, signature, { from: operator }));
+        assert.equal(req.nonce, i, "nonce is not equal");
 
         // simple relayer
         const shash = await sRelayer.hashOfRequest(relayee, calculator.address, abiEncodedCall);

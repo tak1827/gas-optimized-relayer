@@ -16,20 +16,24 @@ contract OptimizedRelayer is IOptimizedRelayer {
     ) public {
         if (!verify(sender, to, data, v, r, s)) _revert(NotMatchWithRecoverdSigner.selector);
 
-        unchecked {
-            _nonces[sender] += 1;
-        }
-
         assembly {
+            // Inclement nonce
+            // same as: _nonces[sender] += 1;
+            mstore(0x20, _nonces.slot)
+            mstore(0x00, sender)
+            let slot := keccak256(0x00, 0x40)
+            sstore(slot, add(sload(slot), 1))
+
             // Append the address of the original function executer to the end of calldata
             // same as: bytes memory cdata = abi.encodePacked(data, sender);
             let size := mload(data)
+            let appendSize := add(size, 0x14)
             mstore(add(add(data, 0x20), size), shl(96, sender))
-            mstore(data, add(size, 0x14))
+            mstore(data, appendSize)
 
             // Call relayee function
             // same as: (bool success, bytes memory returndata) = to.call(cdata);
-            if iszero(call(gas(), to, 0, add(data, 0x20), add(size, 0x14), 0, 0)) {
+            if iszero(call(gas(), to, 0, add(data, 0x20), appendSize, 0, 0)) {
                 switch returndatasize()
                 case 0 {
                     mstore(0x00, 0xbbdf0a77) // -> CallReverted.selector
@@ -51,9 +55,7 @@ contract OptimizedRelayer is IOptimizedRelayer {
         bytes32 r,
         bytes32 s
     ) public view returns (bool) {
-        uint256 nonce;
         bytes32 hash;
-
         assembly {
             // NOTE: inlined hashOfRequest to save gas
             // ********** start **********
@@ -61,11 +63,10 @@ contract OptimizedRelayer is IOptimizedRelayer {
             // Get nonce
             mstore(0x20, _nonces.slot)
             mstore(0x00, sender)
-            nonce := sload(keccak256(0x00, 0x40))
+            // nonce := sload(keccak256(0x00, 0x40))
 
             // Compute hash of data
-            let size := mload(data)
-            hash := keccak256(add(data, 0x20), size)
+            // dataHash := keccak256(add(data, 0x20), mload(data))
 
             // Get free memory pointer
             let ptr := mload(0x40)
@@ -73,8 +74,8 @@ contract OptimizedRelayer is IOptimizedRelayer {
             // Store the function arguments sequentially in memory
             mstore(ptr, sender)
             mstore(add(ptr, 0x20), to)
-            mstore(add(ptr, 0x40), nonce)
-            mstore(add(ptr, 0x60), hash)
+            mstore(add(ptr, 0x40), sload(keccak256(0x00, 0x40))) // nonce
+            mstore(add(ptr, 0x60), keccak256(add(data, 0x20), mload(data))) // dataHash
 
             // Compute the final hash
             hash := keccak256(ptr, 0x80)
