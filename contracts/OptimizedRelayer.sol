@@ -9,12 +9,13 @@ contract OptimizedRelayer is IOptimizedRelayer {
     function execute(
         address sender,
         address to,
-        bytes memory data,
+        bytes calldata data,
         uint8 v,
         bytes32 r,
         bytes32 s
     ) public {
-        if (!verify(sender, to, data, v, r, s)) _revert(NotMatchWithRecoverdSigner.selector);
+        (bool success, int calldataPtr) = verify(sender, to, data, v, r, s);
+        if (!success) _revert(NotMatchWithRecoverdSigner.selector);
 
         assembly {
             // Inclement nonce
@@ -26,14 +27,12 @@ contract OptimizedRelayer is IOptimizedRelayer {
 
             // Append the address of the original function executer to the end of calldata
             // same as: bytes memory cdata = abi.encodePacked(data, sender);
-            let size := mload(data)
-            let appendSize := add(size, 0x14)
-            mstore(add(add(data, 0x20), size), shl(96, sender))
-            mstore(data, appendSize)
+            let appendSize := add(data.length, 0x14)
+            mstore(add(calldataPtr, data.length), shl(96, sender))
 
             // Call relayee function
             // same as: (bool success, bytes memory returndata) = to.call(cdata);
-            if iszero(call(gas(), to, 0, add(data, 0x20), appendSize, 0, 0)) {
+            if iszero(call(gas(), to, 0, calldataPtr, appendSize, 0, 0)) {
                 switch returndatasize()
                 case 0 {
                     mstore(0x00, 0xbbdf0a77) // -> CallReverted.selector
@@ -50,12 +49,13 @@ contract OptimizedRelayer is IOptimizedRelayer {
     function verify(
         address sender,
         address to,
-        bytes memory data,
+        bytes calldata data,
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) public view returns (bool) {
+    ) public view returns (bool result, int calldataPtr) {
         bytes32 hash;
+
         assembly {
             // NOTE: inlined hashOfRequest to save gas
             // ********** start **********
@@ -63,40 +63,46 @@ contract OptimizedRelayer is IOptimizedRelayer {
             // Get nonce
             mstore(0x20, _nonces.slot)
             mstore(0x00, sender)
-            // nonce := sload(keccak256(0x00, 0x40))
+            let nonce := sload(keccak256(0x00, 0x40))
+
+            // Get free memory pointer
+            calldataPtr := mload(0x40)
 
             // Compute hash of data
             // dataHash := keccak256(add(data, 0x20), mload(data))
+            calldatacopy(calldataPtr, data.offset, data.length)
+            hash := keccak256(calldataPtr, data.length) // dataHash
 
-            // Get free memory pointer
-            let ptr := mload(0x40)
+            // Update free memory pointer to preserve mem stored calldata
+            let ptr := add(calldataPtr, data.length)
+            mstore(0x40, ptr)
 
             // Store the function arguments sequentially in memory
             mstore(ptr, sender)
             mstore(add(ptr, 0x20), to)
-            mstore(add(ptr, 0x40), sload(keccak256(0x00, 0x40))) // nonce
-            mstore(add(ptr, 0x60), keccak256(add(data, 0x20), mload(data))) // dataHash
+            mstore(add(ptr, 0x40), nonce)
+            mstore(add(ptr, 0x60), hash) // dataHash
 
             // Compute the final hash
-            hash := keccak256(ptr, 0x80)
+            hash := keccak256(ptr, 0x80) // finalHash
 
             // ********** end **********
 
             // Store the Ethereum Signed Message prefix and the hash
             mstore(ptr, "\x19Ethereum Signed Message:\n32\x00\x00\x00\x00")
-            mstore(add(ptr, 0x1c), hash)
+            mstore(add(ptr, 0x1c), hash) // finalHash
 
             // Compute the ethSignedMessageHash
-            hash := keccak256(ptr, 0x3c)
+            hash := keccak256(ptr, 0x3c) // ethSignedMessageHash
         }
 
-        return sender == ecrecover(hash, v, r, s);
+        result = sender == ecrecover(hash, v, r, s);
     }
 
     function hashOfRequest(
         address sender,
         address to,
-        bytes memory data
+        bytes calldata data
     ) public view returns (bytes32) {
         return keccak256(abi.encode(sender, to, _nonces[sender], keccak256(data)));
     }
