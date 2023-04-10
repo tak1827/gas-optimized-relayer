@@ -16,7 +16,7 @@
     "url": "git+https://github.com/tak1827/gas-optimized-relayer.git"
   },
   "author": "tak1827<re795h@gmail.com>",
-  "license": "Apache License Version 2.0",
+  "license": "MIT License",
   "bugs": {
     "url": "https://github.com/tak1827/gas-optimized-relayer/issues"
   },
